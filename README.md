@@ -1,94 +1,210 @@
-# TransitOps — Smart Transport Operations Platform
+# TransitOps — Backend API
 
-TransitOps is a modern, enterprise-ready logistics and fleet management platform. It digitizes fleet scheduling, maintenance logs, operational expenses, and driver records while enforcing strict business rules, compliance requirements, and role-based access control.
-
----
-
-## 🏗️ System Architecture
-
-TransitOps is built as a split-monolith containing a decoupled React frontend and an Express REST API backend, sharing a synchronized MySQL database.
-
-```mermaid
-graph TD
-    User["Client Browser"] -->|Vite Dev Server / Nginx| Frontend["React Frontend (Zustand + React Router v6)"]
-    Frontend -->|HTTP Requests / Auth Header| API["Express REST API (TypeScript)"]
-    API -->|Auth Middleware / JWT| Guards["RBAC Guard Rails"]
-    Guards -->|ORM Query| Prisma["Prisma Client"]
-    Prisma -->|Transaction / Lock| DB[("MySQL Database")]
-    API -->|Email Dispatch| Resend["Resend API / SMTP"]
-```
+Node.js + Express + TypeScript REST API for the TransitOps Smart Transport Operations Platform.
 
 ---
 
-## 🌟 Key Functional Features & Guard Rails
+## 🚀 Quick Start
 
-### 1. Compliance Engine (Driver Registry)
-- **License Compliance**: System blocks dispatchers from assigning drivers with expired licenses (`licenseExpiry` < current date).
-- **Visual Alerting**: License expiry dates are highlighted in Amber in the UI when within 30 days of expiry, and in Red when expired.
-- **Status Exclusions**: Off-duty or suspended drivers are filtered out of selection pools.
+### Prerequisites
 
-### 2. Payload Enforcement (Weight Limits)
-- **Automatic Load Checks**: During trip creation, the cargo weight (kg) is compared against the maximum capacity of the chosen vehicle. If the cargo weight exceeds the vehicle's capacity, the API throws a validation error and blocks transaction commit.
+| Requirement | Version |
+|-------------|---------|
+| Node.js | ≥ 18.x |
+| MySQL | ≥ 8.0 |
+| npm | ≥ 9.x |
 
-### 3. Atomic Dispatch & Completion Cascades
-- **Atomic Dispatch**: Dispatching a trip (Draft → Dispatched) updates both the vehicle and driver status to `OnTrip` atomically inside a database transaction.
-- **Completion Cascades**: Completing a trip (Dispatched → Completed) records odometer readings, fuel consumption, toll expenses, and atomically returns the driver and vehicle to `Available` status.
+### 1. Install Dependencies
 
-### 4. Safety & Maintenance Operations
-- **Maintenance Block**: Opening a maintenance ticket (e.g. "Brake Service") automatically marks the vehicle as `InShop`, hiding it from active dispatch pools. Completing the ticket returns it to `Available`.
-- **Brute Force Lockout**: Accounts are automatically locked out for 15 minutes after 5 consecutive failed login attempts.
-
----
-
-## 🔑 Default Credentials
-
-| Role | Email | Password | Sidebar Access |
-|---|---|---|---|
-| **Fleet Manager** | `admin@transitops.com` | `admin123` | Full access across all settings, fleet registry, drivers, expenses, and analytics |
-| **Dispatcher** | `dispatcher@transitops.com` | `password123` | Create and dispatch trips; read-only fleet/maintenance view |
-| **Safety Officer** | `safety@transitops.com` | `password123` | Manage driver compliance, safety scores, and maintenance logs |
-| **Financial Analyst** | `finance@transitops.com` | `password123` | View expenses, fuel logs, and analytics reports |
-
----
-
-## 🚀 Quick Startup Guide
-
-To get both the Express API and React frontend running locally, follow these steps:
-
-### 1. Initialize Backend
 ```bash
 cd backend
 npm install
-cp .env.example .env
-# Edit .env with your MySQL credentials, then run:
-npx prisma migrate dev --name initial
-npx ts-node prisma/seed.ts
-npm run dev
 ```
 
-### 2. Initialize Frontend
+### 2. Configure Environment
+
 ```bash
-cd ../frontend
-npm install
 cp .env.example .env
+```
+
+Edit `.env` with your credentials:
+
+```env
+DATABASE_URL="mysql://root:your_password@localhost:3306/transitops"
+JWT_SECRET=your-secret-key
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxx   # Get from https://resend.com
+```
+
+### 3. Set Up Database
+
+```bash
+# Run migrations
+npx prisma migrate dev --name initial
+
+# Seed sample data (users, vehicles, drivers, 3 months of trips)
+npx ts-node prisma/seed.ts
+```
+
+### 4. Start Development Server
+
+```bash
 npm run dev
 ```
 
-### 3. Verification
-- Frontend runs on: **http://localhost:5173**
-- Backend runs on: **http://localhost:3001**
+API runs at **http://localhost:3001**
 
 ---
 
-## 📖 Project Documentation Guides
+## 🔑 Default Credentials (after seeding)
 
-Refer to these guides in the repository root for specific implementation details:
-- 📑 [Logistics Business Rules](file:///c:/Users/Felix/Desktop/transitops/business_rules.md) — Exhaustive checklist of capacity limits and status overrides.
-- 🔐 [RBAC Matrix](file:///c:/Users/Felix/Desktop/transitops/rbac.md) — Permission configurations and route-level guards.
-- 🔑 [Default Seed Credentials](file:///c:/Users/Felix/Desktop/transitops/seed_credentials.md) — Accounts list and safety timeouts.
-- ⚙️ [API Reference](file:///c:/Users/Felix/Desktop/transitops/api_reference.md) — Backend route endpoints mapping.
-- 🧪 [Verification Checklist](file:///c:/Users/Felix/Desktop/transitops/tests.md) — Setup and logs for the Jest & Vitest testing suites.
+| Role | Email | Password |
+|------|-------|----------|
+| Fleet Manager | `admin@transitops.com` | `admin123` |
+| Fleet Manager | `manager2@transitops.com` | `password123` |
+| Dispatcher | `dispatcher@transitops.com` | `password123` |
+| Dispatcher | `dispatcher2@transitops.com` | `password123` |
+| Safety Officer | `safety@transitops.com` | `password123` |
+| Safety Officer | `safety2@transitops.com` | `password123` |
+| Financial Analyst | `finance@transitops.com` | `password123` |
 
 ---
 
-*TransitOps © 2026*
+## 🏗️ Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js 18 |
+| Framework | Express 4 |
+| Language | TypeScript 5 |
+| ORM | Prisma 5 (MySQL) |
+| Auth | JWT + bcryptjs |
+| Email | Resend API (SMTP fallback) |
+| Validation | Express middleware |
+
+---
+
+## 📁 Project Structure
+
+```
+backend/
+├── prisma/
+│   ├── schema.prisma       # Database schema — all models & enums
+│   ├── seed.ts             # Sample data seeder
+│   └── migrations/         # Prisma migration history
+├── src/
+│   ├── index.ts            # App entry — Express setup & middleware
+│   ├── auth/               # JWT login, RBAC middleware, lockout
+│   ├── vehicles/           # Vehicle CRUD + status enforcement
+│   ├── drivers/            # Driver CRUD + license expiry checks
+│   ├── trips/              # Trip lifecycle (Draft→Dispatched→Completed)
+│   ├── maintenance/        # Maintenance log management
+│   ├── fuel-expense/       # Fuel logs and expense tracking
+│   ├── analytics/          # KPI aggregation and reporting
+│   ├── settings/           # Depot configuration
+│   └── notifications/      # Resend email service (SMTP fallback)
+├── .env                    # Local secrets — NOT committed
+├── .env.example            # Template — commit-safe, no real credentials
+└── package.json
+```
+
+---
+
+## 🔐 Authentication & Roles
+
+All routes (except `/api/auth/login`) require a `Bearer <token>` header.
+
+| Role | Permissions |
+|------|------------|
+| **Fleet Manager** | Full access — vehicles, drivers, trips, analytics, settings |
+| **Dispatcher** | Create and manage trips, view vehicles and drivers |
+| **Safety Officer** | View drivers, maintenance logs, safety scores |
+| **Financial Analyst** | View expenses, fuel logs, revenue analytics |
+
+Account lockout: **5 failed login attempts** locks the account for **15 minutes**.
+
+---
+
+## 🌐 API Routes
+
+### Auth
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/api/auth/login` | Login — returns JWT token |
+| GET  | `/api/auth/me` | Get current user profile |
+
+### Vehicles
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET  | `/api/vehicles` | List all vehicles (filterable) |
+| POST | `/api/vehicles` | Add vehicle |
+| PUT  | `/api/vehicles/:id` | Update vehicle |
+| DELETE | `/api/vehicles/:id` | Delete vehicle |
+
+### Drivers
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET  | `/api/drivers` | List all drivers |
+| POST | `/api/drivers` | Add driver |
+| PUT  | `/api/drivers/:id` | Update driver |
+
+### Trips
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET  | `/api/trips` | List trips (filter by status/vehicle/driver) |
+| POST | `/api/trips` | Create trip (Draft status) |
+| POST | `/api/trips/:id/dispatch` | Dispatch trip → OnTrip |
+| POST | `/api/trips/:id/complete` | Complete trip → restores vehicle/driver |
+| POST | `/api/trips/:id/cancel` | Cancel trip |
+
+### Analytics
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/api/analytics/kpis` | Fleet utilization, revenue totals |
+| GET | `/api/analytics/fleet-report` | Per-vehicle revenue, distance, fuel cost |
+| GET | `/api/analytics/monthly-revenue` | Last 6 months revenue chart data |
+| GET | `/api/analytics/export` | CSV export |
+
+---
+
+## ⚙️ Business Rules
+
+- **Dispatch blocked** if vehicle is not `Available` or driver's license is expired
+- **Cargo weight** must not exceed vehicle `maxCapacity`
+- **Completing a trip** atomically restores vehicle + driver to `Available`, creates fuel log and expense records
+- **License expiry reminders** are sent via Resend when a driver's license expires within 30 days
+
+---
+
+## 🧪 Running Tests
+
+```bash
+npm test
+```
+
+**18 tests** across 2 suites:
+- `backend.test.ts` — auth lockout, vehicle dispatch rules, trip validation (12 tests)
+- `email.test.ts` — Resend primary, SMTP fallback, no-transport path (6 tests)
+
+---
+
+## 🐳 Docker
+
+```bash
+# Build and run all services (MySQL + Backend + Frontend)
+docker-compose up --build
+```
+
+See `../docker-compose.yml` for full configuration.
+
+---
+
+## 📧 Email Configuration
+
+TransitOps uses **Resend** as the primary email provider with **SMTP as fallback**.
+
+| Purpose | From Address |
+|---------|-------------|
+| License reminders | `reminders.transitops@felix-au.me` |
+| General notifications | `contact.transitops@felix-au.me` |
+
+Set `RESEND_API_KEY` in `.env`. If unset, falls back to SMTP. If neither is configured, emails are logged to console only.
